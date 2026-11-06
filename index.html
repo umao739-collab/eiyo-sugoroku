@@ -190,6 +190,14 @@ body.fit .app{max-width:none;height:100%;display:grid;grid-template-rows:auto mi
 :root{--cell:#FFF3D8;--cell2:#FFCF8E;--num:#B8560F;--restc:#CFE0F3;--restk:#365C86}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--cell:#4B3B2D;--cell2:#684C30;--num:#FFB36B;--restc:#3F566F;--restk:#DCEBFA}}
 :root[data-theme="dark"]{--cell:#4B3B2D;--cell2:#684C30;--num:#FFB36B;--restc:#3F566F;--restk:#DCEBFA}
+
+.roll{margin-top:8px;padding:8px 10px;border-radius:16px;background:var(--soft);border:3px solid var(--line)}
+.roll .rl{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:900;flex-wrap:wrap}
+.dwrap{display:flex;align-items:center;gap:14px;margin-top:6px;flex-wrap:wrap}
+.die{width:84px;height:84px;flex:none}
+.die svg{display:block}
+.die.shake{animation:shk .18s linear infinite}
+@keyframes shk{0%{transform:rotate(-12deg) translateY(0)}50%{transform:rotate(10deg) translateY(-8px)}100%{transform:rotate(-12deg) translateY(0)}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 
@@ -432,7 +440,7 @@ function boardSVG(){
 }
 
 /* ============ state ============ */
-var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null};
+var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false};
 function nm(i){return esc(st.names[i]||CHARS[i].n)}
 function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+st.pos[i]+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
 function startGame(){
@@ -451,30 +459,49 @@ function settle(i,lines){
   else if(SNAKE[p]){st.pos[i]=SNAKE[p];lines.push(nm(i)+'：ヘビの口！ '+p+'マス目 → '+SNAKE[p]+'マス目へもどる')}
   else if(SKIP[p]){st.rest[i]=true;lines.push(nm(i)+'：休みのマス。つぎの問題は お休み')}
 }
-function move(i,k,lines){
+function rollMove(i,k,lines){
   var from=st.pos[i],to=Math.min(GOAL,from+k);st.pos[i]=to;
-  lines.push(nm(i)+'：'+from+'マス目 → '+to+'マス目（+'+(to-from)+'）');
+  lines.push(nm(i)+'：サイコロ「'+k+'」 '+from+'マス目 → '+to+'マス目');
   settle(i,lines);
 }
+function curRoller(){for(var i=0;i<st.n;i++){if(st.rolls[i]>0)return i}return -1}
 function begin(){
   var pool=FL.filter(function(f){return !st.used[f.id]});
   if(!pool.length){st.used={};pool=FL.slice()}
-  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];
+  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;
   for(var i=0;i<st.n;i++){st.ans.push(0);st.mark.push(null);var s=!!st.rest[i];st.sit.push(s);if(s)st.rest[i]=false}
   st.phase='hint';render();
 }
 function allAnswered(){for(var i=0;i<st.n;i++){if(!st.sit[i]&&!st.ans[i])return false}return true}
 function allMarked(){for(var i=0;i<st.n;i++){if(st.ans[i]>0&&st.mark[i]===null)return false}return true}
 function decide(){
-  var any=false;
-  for(var i=0;i<st.n;i++){if(st.ans[i]>0&&st.mark[i]===true){any=true;move(i,4-st.ans[i],st.lines)}}
+  var any=false;st.rolls=[];
+  for(var i=0;i<st.n;i++){var r=(st.ans[i]>0&&st.mark[i]===true)?4-st.ans[i]:0;st.rolls.push(r);if(r)any=true}
   if(!any)st.lines.push('だれも正解しなかったよ。答えを おぼえよう！');
-  st.phase='result';if(st.reached.length)st.over=true;render();
+  st.phase='result';render();
+}
+function doRoll(){
+  var i=curRoller();if(i<0||st.rolling)return;
+  st.rolling=true;var el=document.getElementById('die'),btn=document.getElementById('rollbtn'),n=0;
+  if(btn)btn.disabled=true;if(el)el.classList.add('shake');
+  var tm=setInterval(function(){
+    n++;if(el)el.innerHTML=dieSVG(1+Math.floor(Math.random()*6));
+    if(n>=9){clearInterval(tm);var v=1+Math.floor(Math.random()*6);st.rolling=false;st.die=v;st.rolls[i]--;
+      rollMove(i,v,st.lines);if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;render()}
+  },80);
 }
 function nextQ(){
   st.used[st.food]=1;st.food=null;
   if(st.over){st.screen='end';render();return}
   st.phase='idle';render();
+}
+
+/* ============ サイコロ ============ */
+var PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieSVG(v){
+  var p=(PIPS[v]||[]).map(function(q){return '<circle cx="'+q[0]+'" cy="'+q[1]+'" r="9" fill="#3B2F27"/>'}).join('');
+  if(!v)p='<text x="50" y="68" text-anchor="middle" font-size="54" font-weight="900" fill="#B8A58F">？</text>';
+  return '<svg viewBox="0 0 100 100" width="84" height="84" aria-hidden="true"><rect x="4" y="4" width="92" height="92" rx="20" fill="#fff" stroke="#3B2F27" stroke-width="5"/>'+p+'</svg>';
 }
 
 /* ============ views ============ */
@@ -491,7 +518,7 @@ function setupView(){
   return head()+'<div class="panel"><h2>なん人で あそぶ？</h2><div class="row" style="margin-top:8px">'+[2,3,4,5,6].map(function(n){return '<button class="chip" data-act="n" data-n="'+n+'" aria-pressed="'+(st.n===n)+'">'+n+'人</button>'}).join('')+'</div>'+
     '<div class="names">'+names+'</div><p class="lead" style="margin-top:8px">名前は、この画面の中だけで使って、どこにも保存しないよ。</p>'+
     '<div class="row"><button class="btn main" data-act="start">はじめる</button></div></div>'+
-    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝3つの食品グループ、ヒント2＝表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えは、ノートや紙に書いておこう。答えられる人は、そのときのヒントで「ここで答える」をおす。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。答えを見せあって、正解の人をおすよ。</li><li>ヒント1で正解なら3マス、ヒント2なら2マス、ヒント3なら1マス進む。</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
+    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝3つの食品グループ、ヒント2＝表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えは、ノートや紙に書いておこう。答えられる人は、そのときのヒントで「ここで答える」をおす。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。答えを見せあって、正解の人をおすよ。</li><li>正解すると、サイコロをふれるよ。ヒント1で正解なら3回、ヒント2なら2回、ヒント3なら1回。出た目の数だけ進む！</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
     '<p class="foot">試作です。食べ物とヒントは、教科書「食べて元気に」巻末の「栄養素の働きによる食品の分類」をもとにしています。</p>';
 }
 function playersBar(){return '<div class="who">'+st.names.slice(0,players()).map(function(_,i){return pill(i)}).join('')+'</div>'}
@@ -502,7 +529,7 @@ function hintCards(f,upto){
   var lab=LB[f.lab];
   function hc(n,body){
     var show=upto>=n;
-    return '<div class="hint '+(show?(upto===n?'cur':''):'lock')+'"><div class="hn">ヒント'+n+'<span class="pt">正解で '+(4-n)+'マス</span></div><p'+(n===3?' style="font-size:16px"':'')+'>'+(show?body:'？')+'</p></div>';
+    return '<div class="hint '+(show?(upto===n?'cur':''):'lock')+'"><div class="hn">ヒント'+n+'<span class="pt">正解で サイコロ'+(4-n)+'回</span></div><p'+(n===3?' style="font-size:16px"':'')+'>'+(show?body:'？')+'</p></div>';
   }
   return hc(1,esc(GTXT[f.g]))+hc(2,esc(lab.n))+hc(3,esc(HINT3[f.id]||''));
 }
@@ -532,16 +559,19 @@ function revealView(){
     var r;
     if(st.sit[i])r='<span class="tag">お休み</span>';
     else if(!st.ans[i])r='<span class="tag">答えなし</span>';
-    else r='<span class="tag" style="background:var(--sun);color:var(--on-sun)">ヒント'+st.ans[i]+'</span><button class="bt ok" data-act="mk" data-i="'+i+'" data-v="1" aria-pressed="'+(st.mark[i]===true)+'">正解（'+(4-st.ans[i])+'マス）</button><button class="bt ng" data-act="mk" data-i="'+i+'" data-v="0" aria-pressed="'+(st.mark[i]===false)+'">ちがう</button>';
+    else r='<span class="tag" style="background:var(--sun);color:var(--on-sun)">ヒント'+st.ans[i]+'</span><button class="bt ok" data-act="mk" data-i="'+i+'" data-v="1" aria-pressed="'+(st.mark[i]===true)+'">正解（サイコロ'+(4-st.ans[i])+'回）</button><button class="bt ng" data-act="mk" data-i="'+i+'" data-v="0" aria-pressed="'+(st.mark[i]===false)+'">ちがう</button>';
     return '<div class="prow">'+nmRow(i)+r+'</div>';
   }).join('');
   return '<div class="panel"><h2>こたえは…</h2>'+revealCard()+'</div>'+
     '<div class="panel"><h2>だれが正解かな？</h2><p class="lead">書いた答えを見せあって、正解の人をおしてね。</p>'+prow+'<div class="row"><button class="btn main" data-act="decide"'+(allMarked()?'':' disabled')+'>けってい！</button></div></div>';
 }
 function resultView(){
-  var lines='<ul class="lines">'+st.lines.map(function(l){return '<li>'+l+'</li>'}).join('')+'</ul>';
-  return '<div class="panel"><h2>けっか</h2>'+revealCard()+lines+
-    '<div class="row"><button class="btn main" data-act="next">'+(st.over?'けっかを見る':'つぎの問題へ')+'</button></div></div>';
+  var who=curRoller();
+  var roller=who>=0?'<div class="roll"><div class="rl">'+charIcon(who,34)+'<b>'+nm(who)+'</b>さんのサイコロ<span class="tag" style="background:var(--sun);color:var(--on-sun)">あと '+st.rolls[who]+' 回</span></div><div class="dwrap"><div id="die" class="die">'+dieSVG(st.die)+'</div><button id="rollbtn" class="btn main big" data-act="roll">サイコロをふる！</button></div></div>':'';
+  var shown=st.lines.slice(-4);
+  var lines=shown.length?'<ul class="lines">'+shown.map(function(l){return '<li>'+l+'</li>'}).join('')+'</ul>':'';
+  return '<div class="panel"><h2>'+(who>=0?'正解した人は サイコロ！':'けっか')+'</h2>'+revealCard()+roller+lines+
+    '<div class="row"><button class="btn main" data-act="next"'+(who>=0?' disabled':'')+'>'+(st.over?'けっかを見る':'つぎの問題へ')+'</button></div></div>';
 }
 function endView(){
   var n=players(),ord=[];for(var i=0;i<n;i++)ord.push(i);
@@ -573,6 +603,7 @@ document.addEventListener('click',function(e){
   else if(a==='show'){st.phase='reveal';render()}
   else if(a==='mk'){st.mark[i]=b.dataset.v==='1';render()}
   else if(a==='decide')decide();
+  else if(a==='roll')doRoll();
   else if(a==='next')nextQ();
   else if(a==='quit'||a==='finish'){
     if(st.cf===a){st.cf=null;st.screen=(a==='quit')?'setup':'end';render()}
