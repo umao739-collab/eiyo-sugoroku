@@ -440,7 +440,7 @@ function boardSVG(){
 }
 
 /* ============ state ============ */
-var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false};
+var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null};
 function nm(i){return esc(st.names[i]||CHARS[i].n)}
 function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+st.pos[i]+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
 function startGame(){
@@ -464,11 +464,11 @@ function rollMove(i,k,lines){
   lines.push(nm(i)+'：サイコロ「'+k+'」 '+from+'マス目 → '+to+'マス目');
   settle(i,lines);
 }
-function curRoller(){for(var i=0;i<st.n;i++){if(st.rolls[i]>0)return i}return -1}
+function curRoller(){if(st.hold)return st.hold.i;for(var i=0;i<st.n;i++){if(st.rolls[i]>0)return i}return -1}
 function begin(){
   var pool=FL.filter(function(f){return !st.used[f.id]});
   if(!pool.length){st.used={};pool=FL.slice()}
-  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;
+  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;st.hold=null;
   for(var i=0;i<st.n;i++){st.ans.push(0);st.mark.push(null);var s=!!st.rest[i];st.sit.push(s);if(s)st.rest[i]=false}
   st.phase='hint';render();
 }
@@ -486,8 +486,8 @@ function doRoll(){
   if(btn)btn.disabled=true;if(el)el.classList.add('shake');
   var tm=setInterval(function(){
     n++;if(el)el.innerHTML=dieSVG(1+Math.floor(Math.random()*6));
-    if(n>=9){clearInterval(tm);var v=1+Math.floor(Math.random()*6);st.rolling=false;st.die=v;st.rolls[i]--;
-      rollMove(i,v,st.lines);if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;render()}
+    if(n>=9){clearInterval(tm);var v=1+Math.floor(Math.random()*6);st.rolling=false;st.die=v;st.rolls[i]--;var fr=st.lines.length;
+      rollMove(i,v,st.lines);st.hold={i:i,v:v,from:fr};if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;render()}
   },80);
 }
 function nextQ(){
@@ -566,9 +566,14 @@ function revealView(){
     '<div class="panel"><h2>だれが正解かな？</h2><p class="lead">書いた答えを見せあって、正解の人をおしてね。</p>'+prow+'<div class="row"><button class="btn main" data-act="decide"'+(allMarked()?'':' disabled')+'>けってい！</button></div></div>';
 }
 function resultView(){
-  var who=curRoller();
-  var roller=who>=0?'<div class="roll"><div class="rl">'+charIcon(who,34)+'<b>'+nm(who)+'</b>さんのサイコロ<span class="tag" style="background:var(--sun);color:var(--on-sun)">あと '+st.rolls[who]+' 回</span></div><div class="dwrap"><div id="die" class="die">'+dieSVG(st.die)+'</div><button id="rollbtn" class="btn main big" data-act="roll">サイコロをふる！</button></div></div>':'';
-  var shown=st.lines.slice(-4);
+  var who=curRoller(),h=st.hold;
+  var tag='<span class="tag" style="background:var(--sun);color:var(--on-sun)">あと '+(who>=0?st.rolls[who]:0)+' 回</span>';
+  var roller='';
+  if(who>=0){
+    roller='<div class="roll"><div class="rl">'+charIcon(who,34)+'<b>'+nm(who)+'</b>さんのサイコロ'+tag+'</div><div class="dwrap"><div id="die" class="die">'+dieSVG(h?h.v:st.die)+'</div>'+
+      (h?'<button id="ackbtn" class="btn main big" data-act="ack">OK！ つぎへ</button>':'<button id="rollbtn" class="btn main big" data-act="roll">サイコロをふる！</button>')+'</div></div>';
+  }
+  var shown=h?st.lines.slice(h.from):st.lines.slice(-4);
   var lines=shown.length?'<ul class="lines">'+shown.map(function(l){return '<li>'+l+'</li>'}).join('')+'</ul>':'';
   return '<div class="panel"><h2>'+(who>=0?'正解した人は サイコロ！':'けっか')+'</h2>'+revealCard()+roller+lines+
     '<div class="row"><button class="btn main" data-act="next"'+(who>=0?' disabled':'')+'>'+(st.over?'けっかを見る':'つぎの問題へ')+'</button></div></div>';
@@ -604,6 +609,7 @@ document.addEventListener('click',function(e){
   else if(a==='mk'){st.mark[i]=b.dataset.v==='1';render()}
   else if(a==='decide')decide();
   else if(a==='roll')doRoll();
+  else if(a==='ack'){st.hold=null;render()}
   else if(a==='next')nextQ();
   else if(a==='quit'||a==='finish'){
     if(st.cf===a){st.cf=null;st.screen=(a==='quit')?'setup':'end';render()}
