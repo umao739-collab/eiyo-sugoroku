@@ -453,7 +453,7 @@ function boardSVG(){
 }
 
 /* ============ state ============ */
-var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,txt:[],raw:[],edit:null,draft:'',hide:true};
+var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,txt:[],raw:[],edit:null,draft:'',hide:false};
 function nm(i){return esc(st.names[i]||CHARS[i].n)}
 function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+st.pos[i]+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
 function startGame(){
@@ -537,7 +537,7 @@ function apvText(){
 function begin(){
   var pool=FL.filter(function(f){return !st.used[f.id]});
   if(!pool.length){st.used={};pool=FL.slice()}
-  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;st.hold=null;st.txt=[];st.raw=[];st.edit=null;st.draft='';st.hide=true;
+  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;st.hold=null;st.txt=[];st.raw=[];st.edit=null;st.draft='';st.hide=false;
   for(var i=0;i<st.n;i++){st.ans.push(0);st.mark.push(null);var s=!!st.rest[i];st.sit.push(s);if(s)st.rest[i]=false}
   st.phase='hint';render();
 }
@@ -587,7 +587,7 @@ function setupView(){
   return head()+'<div class="panel"><h2>なん人で あそぶ？</h2><div class="row" style="margin-top:8px">'+[2,3,4,5,6].map(function(n){return '<button class="chip" data-act="n" data-n="'+n+'" aria-pressed="'+(st.n===n)+'">'+n+'人</button>'}).join('')+'</div>'+
     '<div class="names">'+names+'</div><p class="lead" style="margin-top:8px">名前は、この画面の中だけで使って、どこにも保存しないよ。</p>'+
     '<div class="row"><button class="btn main" data-act="start">はじめる</button></div></div>'+
-    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝その食べ物が使われる料理、ヒント2＝食品グループと表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えられる人は、そのときのヒントで「ここで答える」をおして、<b>答えを画面に書きこむ</b>よ（ローマ字でもOK）。書いているあいだは文字がぼやけるよ。見たいときは「見せる」。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。書いた答えは じどうで ○か×かの判定が出るよ。（しょうが・ショウガ・生姜 どれでも正解！）</li><li>正解すると、サイコロをふれるよ。ヒント1で正解なら3回、ヒント2なら2回、ヒント3なら1回。出た目の数だけ進む！</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
+    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝その食べ物が使われる料理、ヒント2＝食品グループと表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えられる人は、そのときのヒントで「ここで答える」をおして、<b>答えを画面に書きこむ</b>よ（ローマ字でもOK）。友だちに見られたくないときは「かくす」。「けってい」をおすと、答えは「こたえを見る」まで見えなくなるよ。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。書いた答えは じどうで ○か×かの判定が出るよ。（しょうが・ショウガ・生姜 どれでも正解！）</li><li>正解すると、サイコロをふれるよ。ヒント1で正解なら3回、ヒント2なら2回、ヒント3なら1回。出た目の数だけ進む！</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
     '<p class="foot">試作です。食べ物とヒントは、教科書「食べて元気に」巻末の「栄養素の働きによる食品の分類」をもとにしています。</p>';
 }
 function playersBar(){return '<div class="who">'+st.names.slice(0,players()).map(function(_,i){return pill(i)}).join('')+'</div>'}
@@ -668,7 +668,7 @@ function autoMark(){
 }
 function lockAns(){
   var t=st.draft.trim();if(st.edit===null||!t)return;
-  var raw=t;st.ans[st.edit]=st.stage;st.raw[st.edit]=raw;st.txt[st.edit]=makeTxt(raw);st.edit=null;st.draft='';st.hide=true;render();
+  var raw=t;st.ans[st.edit]=st.stage;st.raw[st.edit]=raw;st.txt[st.edit]=makeTxt(raw);st.edit=null;st.draft='';st.hide=false;render();
 }
 function render(){
   var h;
@@ -691,9 +691,9 @@ document.addEventListener('click',function(e){
   else if(a==='ask')begin();
   else if(a==='more'){if(st.stage<3){st.stage++;render()}}
   else if(a==='unans'){st.ans[i]=0;st.txt[i]='';render()}
-  else if(a==='ans'){st.edit=i;st.draft='';st.hide=true;render()}
+  else if(a==='ans'){st.edit=i;st.draft='';st.hide=false;render()}
   else if(a==='hide'){st.hide=!st.hide;render()}
-  else if(a==='cancel'){st.edit=null;st.draft='';st.hide=true;render()}
+  else if(a==='cancel'){st.edit=null;st.draft='';st.hide=false;render()}
   else if(a==='flip'){st.mark[i]=!st.mark[i];render()}
   else if(a==='lock')lockAns()
   else if(a==='show'){st.phase='reveal';autoMark();render()}
