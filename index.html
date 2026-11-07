@@ -205,7 +205,9 @@ body.fit .app{max-width:none;height:100%;display:grid;grid-template-rows:auto mi
 .aed{display:flex;gap:6px;align-items:center;padding:2px 0 8px;flex-wrap:wrap}
 .ainp{flex:1 1 140px;min-width:0;padding:8px 12px;font-size:18px;font-weight:700;border-radius:14px;border:3px solid var(--line);background:var(--card);color:var(--ink)}
 .ainp:focus{outline:none;border-color:var(--sun)}
-.ainp.mk{-webkit-text-security:disc;text-security:disc}
+.ainp.mk{color:transparent;text-shadow:0 0 9px var(--ink);caret-color:var(--ink)}
+.apv{flex:0 0 100%;font-size:13px;font-weight:800;color:var(--ink2);min-height:0}
+.apv:empty{display:none}
 .atx{padding:0 0 6px 4px;font-size:14px;color:var(--ink2)}
 .atx b{color:var(--ink);font-size:16px}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -451,7 +453,7 @@ function boardSVG(){
 }
 
 /* ============ state ============ */
-var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,txt:[],edit:null,draft:'',hide:false};
+var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,txt:[],raw:[],edit:null,draft:'',hide:true};
 function nm(i){return esc(st.names[i]||CHARS[i].n)}
 function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+st.pos[i]+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
 function startGame(){
@@ -476,10 +478,66 @@ function rollMove(i,k,lines){
   settle(i,lines);
 }
 function curRoller(){if(st.hold)return st.hold.i;for(var i=0;i<st.n;i++){if(st.rolls[i]>0)return i}return -1}
+
+var ALIAS={"rice": ["ごはん", "ご飯", "白ご飯", "白飯", "米", "お米", "ライス", "めし", "飯", "白米", "はくまい", "しろごはん"], "udon": ["うどん", "饂飩"], "bread": ["ぱん", "食パン", "しょくぱん", "bread"], "mochi": ["もち", "餅", "お餅", "おもち"], "cornflakes": ["こーんふれーく", "シリアル", "こーんふれいく", "cornflakes"], "spaghetti": ["すぱげってぃ", "すぱげてぃ", "ぱすた", "spaghetti", "pasta", "すぱげっち"], "somen": ["そうめん", "素麺", "そーめん", "索麺", "素めん"], "satsumaimo": ["さつまいも", "さつま芋", "薩摩芋", "薩摩いも", "さつま"], "satoimo": ["さといも", "里芋", "里いも", "さと芋"], "jagaimo": ["じゃがいも", "じゃが芋", "馬鈴薯", "ばれいしょ", "じゃが", "ポテト", "ぽてと"], "senbei": ["せんべい", "煎餅", "おせんべい", "お煎餅", "せんべ"], "cake": ["けーき", "cake", "ショートケーキ", "しょーとけーき"], "sugar": ["さとう", "砂糖", "お砂糖", "しゅがー", "sugar", "上白糖", "じょうはくとう", "ぐらにゅーとう", "グラニュー糖"], "honey": ["はちみつ", "蜂蜜", "はち蜜", "honey", "はにー"], "butter": ["ばたー", "butter"], "goma_w": ["しろごま", "白ごま", "白胡麻", "白ゴマ", "白ごま", "しろ胡麻"], "goma_b": ["くろごま", "黒ごま", "黒胡麻", "黒ゴマ", "くろ胡麻"], "peanut": ["らっかせい", "落花生", "ぴーなっつ", "ぴーなつ", "なんきんまめ", "南京豆", "peanut", "peanuts"], "salmon": ["さけ", "鮭", "しゃけ", "さーもん", "salmon", "あきさけ", "秋鮭"], "ika": ["いか", "烏賊", "squid", "するめいか"], "aji": ["あじ", "鯵", "まあじ", "真鯵"], "iwashi": ["いわし", "鰯", "まいわし", "真鰯"], "tako": ["たこ", "蛸", "octopus", "まだこ"], "ebi": ["えび", "海老", "蝦", "shrimp", "えびさん"], "tuna": ["つな", "まぐろ", "鮪", "ツナ缶", "つなかん", "tuna", "シーチキン", "しーちきん"], "asari": ["あさり", "浅蜊", "浅利"], "katsuobushi": ["かつおぶし", "鰹節", "かつお節", "おかか", "かつお", "鰹"], "pork": ["ぶたにく", "豚肉", "ぶた", "豚", "ぽーく", "pork", "ぶた肉"], "beef": ["ぎゅうにく", "牛肉", "ぎゅう", "びーふ", "beef", "牛", "ぎゅうにく", "牛肉"], "chicken": ["とりにく", "鶏肉", "鳥肉", "とり", "鶏", "ちきん", "かしわ", "chicken", "とり肉"], "bacon": ["べーこん", "bacon"], "ham": ["はむ", "そーせーじ", "はむそーせーじ", "ういんなー", "うぃんなー", "ウインナー", "ハムソーセージ", "sausage", "ham"], "kamaboko": ["かまぼこ", "蒲鉾"], "chikuwa": ["ちくわ", "竹輪"], "egg": ["たまご", "卵", "玉子", "egg", "えっぐ", "鶏卵", "けいらん"], "daizu": ["だいず", "大豆", "soybean"], "miso": ["みそ", "味噌", "miso"], "milk": ["ぎゅうにゅう", "牛乳", "みるく", "ぎゅーにゅー", "milk", "ミルク"], "cheese": ["ちーず", "cheese"], "yogurt": ["よーぐると", "よぐると", "yogurt", "ヨーグルト"], "shirasu": ["しらす", "しらすぼし", "しらす干し", "しらす干", "釜揚げしらす", "かまあげしらす", "ちりめん", "ちりめんじゃこ", "じゃこ"], "sakuraebi": ["さくらえび", "桜えび", "桜海老"], "niboshi": ["にぼし", "煮干し", "煮干", "いりこ", "煮干"], "hijiki": ["ひじき", "鹿尾菜", "羊栖菜"], "kombu": ["こんぶ", "昆布", "こぶ"], "wakame": ["わかめ", "若布", "若芽"], "nori": ["のり", "海苔", "焼きのり", "焼き海苔", "やきのり", "焼海苔"], "broccoli": ["ぶろっこりー", "ぶろっこり", "broccoli"], "asparagus": ["あすぱらがす", "あすぱら", "asparagus"], "piman": ["ぴーまん", "青ピーマン", "あおぴーまん", "ピーマン"], "carrot": ["にんじん", "人参", "きゃろっと", "carrot", "人じん"], "horenso": ["ほうれんそう", "ほうれん草", "ほーれんそう", "菠薐草", "ほうれんそう"], "akapiman": ["あかぴーまん", "赤ピーマン", "ぱぷりか", "paprika"], "shungiku": ["しゅんぎく", "春菊"], "chingensai": ["ちんげんさい", "青梗菜", "ちんげん菜", "チンゲン菜", "ちんげんさい"], "sayaingen": ["さやいんげん", "いんげん", "さや隠元", "隠元", "隠元豆", "いんげんまめ", "さやいんげんまめ"], "komatsuna": ["こまつな", "小松菜"], "kaiware": ["かいわれだいこん", "かいわれ大根", "貝割れ大根", "かいわれ", "貝割れ", "貝割れ菜", "かいわれな"], "tomato": ["とまと", "tomato", "ミニトマト", "みにとまと"], "okura": ["おくら", "okra"], "kabocha": ["かぼちゃ", "南瓜", "ぱんぷきん", "pumpkin"], "lettuce": ["れたす", "lettuce", "サニーレタス", "さにーれたす"], "hakusai": ["はくさい", "白菜"], "cabbage": ["きゃべつ", "cabbage", "甘藍", "かんらん"], "shoga": ["しょうが", "生姜", "ショウガ", "じんじゃー", "ginger", "しょーが", "ジンジャー", "生薑", "しょうが"], "kabu": ["かぶ", "蕪", "かぶら", "カブラ", "かぶ"], "moyashi": ["もやし", "萌やし", "もやし"], "tamanegi": ["たまねぎ", "玉ねぎ", "玉葱", "onion", "おにおん", "たまねぎ"], "nasu": ["なす", "茄子", "なすび", "eggplant", "なすび", "ナスビ"], "umeboshi": ["うめぼし", "梅干し", "梅干", "梅ぼし", "うめぼし"], "edamame": ["えだまめ", "枝豆", "枝まめ"], "cauliflower": ["かりふらわー", "花野菜", "はなやさい", "かりふらわ", "cauliflower", "カリフラワー"], "daikon": ["だいこん", "大根", "おおね", "だいこん"], "tomorokoshi": ["とうもろこし", "玉蜀黍", "こーん", "とうきび", "corn", "スイートコーン", "すいーとこーん"], "shiitake": ["しいたけ", "椎茸", "しいたけ"], "ringo": ["りんご", "林檎", "apple", "あっぷる"], "banana": ["ばなな", "banana"], "budo": ["ぶどう", "葡萄", "grape", "ぐれーぷ", "grapes"], "grapefruit": ["ぐれーぷふるーつ", "ぐれふる", "grapefruit", "ぐれーぷふるーつ", "グレープフルーツ"], "ichigo": ["いちご", "苺", "すとろべりー", "strawberry", "イチゴ"], "momo": ["もも", "桃", "peach", "ぴーち"], "lemon": ["れもん", "檸檬", "lemon"], "melon": ["めろん", "melon", "マスクメロン", "ますくめろん"], "orange": ["おれんじ", "orange", "オレンジ"], "mikan": ["みかん", "蜜柑", "温州みかん", "うんしゅうみかん", "mandarin"], "nashi": ["なし", "梨", "和梨", "pear", "ナシ"], "kiwi": ["きうい", "きういふるーつ", "kiwi", "きーうぃ", "きうぃ", "キウイ", "キウイフルーツ"]};
+function nrm(s){
+  s=String(s||'').normalize('NFKC').toLowerCase();
+  s=s.replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-96)});
+  s=s.replace(/[ぁぃぅぇぉ]/g,function(c){return 'あいうえお'['ぁぃぅぇぉ'.indexOf(c)]});
+  s=s.replace(/[っ\s・､、,，。.!！?？ー\-－~〜'’"「」『』()（）]/g,'');
+  return s.replace(/(です|だよ|かな)$/,'');
+}
+var ALN={};
+FL.forEach(function(f){var l=ALIAS[f.id]||[];l=l.concat([plain(f.name)]);ALN[f.id]=l.map(nrm).filter(function(x){return x})});
+function lev1(a,b){
+  if(a===b)return true;var la=a.length,lb=b.length;if(Math.abs(la-lb)>1)return false;
+  var i=0;while(i<la&&i<lb&&a[i]===b[i])i++;
+  if(la===lb)return a.slice(i+1)===b.slice(i+1);
+  if(la>lb)return a.slice(i+1)===b.slice(i);
+  return a.slice(i)===b.slice(i+1);
+}
+var RT={a:'あ',i:'い',u:'う',e:'え',o:'お',ka:'か',ki:'き',ku:'く',ke:'け',ko:'こ',ga:'が',gi:'ぎ',gu:'ぐ',ge:'げ',go:'ご',sa:'さ',si:'し',shi:'し',su:'す',se:'せ',so:'そ',za:'ざ',zi:'じ',ji:'じ',zu:'ず',ze:'ぜ',zo:'ぞ',ta:'た',ti:'ち',chi:'ち',tu:'つ',tsu:'つ',te:'て',to:'と',da:'だ',di:'ぢ',du:'づ',de:'で',do:'ど',na:'な',ni:'に',nu:'ぬ',ne:'ね',no:'の',ha:'は',hi:'ひ',hu:'ふ',fu:'ふ',he:'へ',ho:'ほ',ba:'ば',bi:'び',bu:'ぶ',be:'べ',bo:'ぼ',pa:'ぱ',pi:'ぴ',pu:'ぷ',pe:'ぺ',po:'ぽ',ma:'ま',mi:'み',mu:'む',me:'め',mo:'も',ya:'や',yu:'ゆ',yo:'よ',ra:'ら',ri:'り',ru:'る',re:'れ',ro:'ろ',wa:'わ',wo:'を',nn:'ん',
+ kya:'きゃ',kyu:'きゅ',kyo:'きょ',gya:'ぎゃ',gyu:'ぎゅ',gyo:'ぎょ',sha:'しゃ',shu:'しゅ',sho:'しょ',sya:'しゃ',syu:'しゅ',syo:'しょ',ja:'じゃ',ju:'じゅ',jo:'じょ',jya:'じゃ',jyu:'じゅ',jyo:'じょ',zya:'じゃ',zyu:'じゅ',zyo:'じょ',cha:'ちゃ',chu:'ちゅ',cho:'ちょ',cya:'ちゃ',cyu:'ちゅ',cyo:'ちょ',tya:'ちゃ',tyu:'ちゅ',tyo:'ちょ',nya:'にゃ',nyu:'にゅ',nyo:'にょ',hya:'ひゃ',hyu:'ひゅ',hyo:'ひょ',bya:'びゃ',byu:'びゅ',byo:'びょ',pya:'ぴゃ',pyu:'ぴゅ',pyo:'ぴょ',mya:'みゃ',myu:'みゅ',myo:'みょ',rya:'りゃ',ryu:'りゅ',ryo:'りょ',fa:'ふぁ',fi:'ふぃ',fe:'ふぇ',fo:'ふぉ',thi:'てぃ',dhi:'でぃ',wi:'うぃ',we:'うぇ',tsa:'つぁ',je:'じぇ',che:'ちぇ',she:'しぇ',xtu:'っ',ltu:'っ'};
+function roma(s){
+  s=String(s).toLowerCase();var out='',left=false,i=0;
+  while(i<s.length){
+    var c=s[i];
+    if(c==='-'){out+='ー';i++;continue}
+    if(c===' '||c==="'"){i++;continue}
+    var n=s[i+1];
+    if(n&&c===n&&/[bcdfghjklmpqrstvwxyz]/.test(c)){out+='っ';i++;continue}
+    var m=null;
+    for(var L=3;L>=1;L--){var k=s.substr(i,L);if(k.length===L&&RT[k]){m=k;break}}
+    if(m){out+=RT[m];i+=m.length;continue}
+    if(c==='n'){out+='ん';i++;continue}
+    out+=c;left=true;i++;
+  }
+  return {t:out,left:left};
+}
+function isAsc(s){return /^[A-Za-z\-' ]+$/.test(s)}
+function makeTxt(raw){
+  raw=raw.trim();
+  if(isAsc(raw)){var c=roma(raw);if(!c.left)return c.t}
+  return raw;
+}
+function judge(fid,raw,txt){
+  var al=ALN[fid]||[],cs=[raw,txt];
+  for(var q=0;q<cs.length;q++){
+    var n=nrm(cs[q]);if(!n)continue;
+    if(al.indexOf(n)>=0)return true;
+    for(var k=0;k<al.length;k++){if(al[k].length>=5&&lev1(n,al[k]))return true}
+  }
+  return false;
+}
+function apvText(){
+  if(st.hide)return '';
+  var r=st.draft.trim();if(!r||!isAsc(r))return '';
+  var c=roma(r);return c.left?'':'「'+c.t+'」と読んだよ';
+}
 function begin(){
   var pool=FL.filter(function(f){return !st.used[f.id]});
   if(!pool.length){st.used={};pool=FL.slice()}
-  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;st.hold=null;st.txt=[];st.edit=null;st.draft='';
+  st.food=pool[Math.floor(Math.random()*pool.length)].id;st.stage=1;st.ans=[];st.mark=[];st.sit=[];st.lines=[];st.reached=[];st.rolls=[];st.die=0;st.rolling=false;st.hold=null;st.txt=[];st.raw=[];st.edit=null;st.draft='';st.hide=true;
   for(var i=0;i<st.n;i++){st.ans.push(0);st.mark.push(null);var s=!!st.rest[i];st.sit.push(s);if(s)st.rest[i]=false}
   st.phase='hint';render();
 }
@@ -529,7 +587,7 @@ function setupView(){
   return head()+'<div class="panel"><h2>なん人で あそぶ？</h2><div class="row" style="margin-top:8px">'+[2,3,4,5,6].map(function(n){return '<button class="chip" data-act="n" data-n="'+n+'" aria-pressed="'+(st.n===n)+'">'+n+'人</button>'}).join('')+'</div>'+
     '<div class="names">'+names+'</div><p class="lead" style="margin-top:8px">名前は、この画面の中だけで使って、どこにも保存しないよ。</p>'+
     '<div class="row"><button class="btn main" data-act="start">はじめる</button></div></div>'+
-    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝その食べ物が使われる料理、ヒント2＝食品グループと表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えられる人は、そのときのヒントで「ここで答える」をおして、<b>答えを画面に書きこむ</b>よ。書かないと答えられないよ。友だちに見せたくないときは「かくす」。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。書いた答えと本当の答えを見くらべて、正解の人をおすよ。</li><li>正解すると、サイコロをふれるよ。ヒント1で正解なら3回、ヒント2なら2回、ヒント3なら1回。出た目の数だけ進む！</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
+    '<div class="panel"><h2>あそびかた</h2><ol class="rules"><li>「出題！」をおすと、食べ物が1つ出されて、ヒント1が出るよ。</li><li>ヒントは3つ。ヒント1＝その食べ物が使われる料理、ヒント2＝食品グループと表の区分、ヒント3＝その食べ物だけのヒント。</li><li>答えられる人は、そのときのヒントで「ここで答える」をおして、<b>答えを画面に書きこむ</b>よ（ローマ字でもOK）。書いているあいだは文字がぼやけるよ。見たいときは「見せる」。<b>答えるのは1人1回</b>。</li><li>みんなが答えたら「こたえを見る」。書いた答えは じどうで ○か×かの判定が出るよ。（しょうが・ショウガ・生姜 どれでも正解！）</li><li>正解すると、サイコロをふれるよ。ヒント1で正解なら3回、ヒント2なら2回、ヒント3なら1回。出た目の数だけ進む！</li><li>はしごは上へワープ。ヘビの口に止まると、しっぽまで もどるよ。「休み」のマスは、つぎの問題をお休み。</li><li>先に100マス目のゴールに着いた人の勝ち！ 時間がきたら「おわる」で、いまの順位が見られるよ。</li></ol></div>'+
     '<p class="foot">試作です。食べ物とヒントは、教科書「食べて元気に」巻末の「栄養素の働きによる食品の分類」をもとにしています。</p>';
 }
 function playersBar(){return '<div class="who">'+st.names.slice(0,players()).map(function(_,i){return pill(i)}).join('')+'</div>'}
@@ -553,7 +611,7 @@ function hintView(){
     else if(st.ans[i])r='<span class="tag" style="background:var(--good);color:var(--ink)">ヒント'+st.ans[i]+'で答えた ✓</span><button class="bt" data-act="unans" data-i="'+i+'">とりけし</button>';
     else if(st.edit===i){
       r='<span class="tag" style="background:var(--sun);color:var(--on-sun)">ヒント'+st.stage+'で書く</span>';
-      ed='<div class="aed"><input id="ainp" class="ainp'+(st.hide?' mk':'')+'" maxlength="20" value="'+esc(st.draft)+'" placeholder="答えを書いてね" autocomplete="off" aria-label="答え"><button class="bt" data-act="hide">'+(st.hide?'見せる':'かくす')+'</button><button id="lockbtn" class="bt ok" data-act="lock"'+(st.draft.trim()?'':' disabled')+'>けってい</button><button class="bt" data-act="cancel">やめる</button></div>';
+      ed='<div class="aed"><input id="ainp" class="ainp'+(st.hide?' mk':'')+'" lang="ja" maxlength="20" value="'+esc(st.draft)+'" placeholder="答えを書いてね" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="答え"><button class="bt" data-act="hide">'+(st.hide?'見せる':'かくす')+'</button><button id="lockbtn" class="bt ok" data-act="lock"'+(st.draft.trim()?'':' disabled')+'>けってい</button><button class="bt" data-act="cancel">やめる</button><div id="apv" class="apv">'+apvText()+'</div></div>';
     }
     else r='<button class="bt ok" data-act="ans" data-i="'+i+'"'+(st.edit!==null?' disabled':'')+'>ここで答える</button>';
     return '<div class="pwrap"><div class="prow">'+nmRow(i)+r+'</div>'+ed+'</div>';
@@ -571,15 +629,19 @@ function revealCard(){
 }
 function revealView(){
   var prow=st.names.slice(0,players()).map(function(_,i){
-    var r;
+    var r,tx='';
     if(st.sit[i])r='<span class="tag">お休み</span>';
     else if(!st.ans[i])r='<span class="tag">答えなし</span>';
-    else r='<span class="tag" style="background:var(--sun);color:var(--on-sun)">ヒント'+st.ans[i]+'</span><button class="bt ok" data-act="mk" data-i="'+i+'" data-v="1" aria-pressed="'+(st.mark[i]===true)+'">正解（サイコロ'+(4-st.ans[i])+'回）</button><button class="bt ng" data-act="mk" data-i="'+i+'" data-v="0" aria-pressed="'+(st.mark[i]===false)+'">ちがう</button>';
-    var tx=(!st.sit[i]&&st.ans[i])?'<div class="atx">書いた答え：<b>'+esc(st.txt[i]||'')+'</b></div>':'';
+    else{
+      var ok=st.mark[i]===true;
+      r=ok?'<span class="tag" style="background:var(--vita);color:var(--vita-ink)">○ 正解！ サイコロ'+(4-st.ans[i])+'回</span>':'<span class="tag" style="background:var(--rest);color:var(--rest-ink)">× ちがう</span>';
+      r+='<button class="bt" data-act="flip" data-i="'+i+'">判定をなおす</button>';
+      tx='<div class="atx">ヒント'+st.ans[i]+'で　書いた答え：<b>'+esc(st.txt[i]||'')+'</b></div>';
+    }
     return '<div class="pwrap"><div class="prow">'+nmRow(i)+r+'</div>'+tx+'</div>';
   }).join('');
   return '<div class="panel"><h2>こたえは…</h2>'+revealCard()+'</div>'+
-    '<div class="panel"><h2>だれが正解かな？</h2><p class="lead">書いた答えと見くらべて、正解の人をおしてね。</p>'+prow+'<div class="row"><button class="btn main" data-act="decide"'+(allMarked()?'':' disabled')+'>けってい！</button></div></div>';
+    '<div class="panel"><h2>判定けっか</h2><p class="lead">書いた答えを じどうで 見くらべたよ。ちがっていたら「判定をなおす」でなおせるよ。</p>'+prow+'<div class="row"><button class="btn main" data-act="decide">けってい！</button></div></div>';
 }
 function resultView(){
   var who=curRoller(),h=st.hold;
@@ -601,9 +663,12 @@ function endView(){
   return head()+'<div class="panel"><h2>'+(goal?'ゴール！ けっか':'ここまでの けっか')+'</h2><div class="rank">'+ord.map(function(i,k){return '<div class="rk'+(st.pos[i]===top?' w':'')+'"><b>'+(k+1)+'</b>'+charIcon(i,34)+nm(i)+'<span style="margin-left:auto;font-size:14px">'+(st.pos[i]>=GOAL?'ゴール':st.pos[i]+'マス目')+'</span></div>'}).join('')+'</div>'+
     '<div class="row"><button class="btn main" data-act="again">もういちど あそぶ</button></div></div>';
 }
+function autoMark(){
+  for(var i=0;i<st.n;i++){st.mark[i]=(!st.sit[i]&&st.ans[i]>0)?judge(st.food,st.raw[i]||'',st.txt[i]||''):null}
+}
 function lockAns(){
   var t=st.draft.trim();if(st.edit===null||!t)return;
-  st.ans[st.edit]=st.stage;st.txt[st.edit]=t;st.edit=null;st.draft='';render();
+  var raw=t;st.ans[st.edit]=st.stage;st.raw[st.edit]=raw;st.txt[st.edit]=makeTxt(raw);st.edit=null;st.draft='';st.hide=true;render();
 }
 function render(){
   var h;
@@ -626,12 +691,12 @@ document.addEventListener('click',function(e){
   else if(a==='ask')begin();
   else if(a==='more'){if(st.stage<3){st.stage++;render()}}
   else if(a==='unans'){st.ans[i]=0;st.txt[i]='';render()}
-  else if(a==='ans'){st.edit=i;st.draft='';render()}
+  else if(a==='ans'){st.edit=i;st.draft='';st.hide=true;render()}
   else if(a==='hide'){st.hide=!st.hide;render()}
-  else if(a==='cancel'){st.edit=null;st.draft='';render()}
+  else if(a==='cancel'){st.edit=null;st.draft='';st.hide=true;render()}
+  else if(a==='flip'){st.mark[i]=!st.mark[i];render()}
   else if(a==='lock')lockAns()
-  else if(a==='show'){st.phase='reveal';render()}
-  else if(a==='mk'){st.mark[i]=b.dataset.v==='1';render()}
+  else if(a==='show'){st.phase='reveal';autoMark();render()}
   else if(a==='decide')decide();
   else if(a==='roll')doRoll();
   else if(a==='ack'){st.hold=null;render()}
@@ -646,7 +711,7 @@ document.addEventListener('input',function(e){if(e.target.dataset&&e.target.data
 render();
 
 document.addEventListener('input',function(e){
-  if(e.target&&e.target.id==='ainp'){st.draft=e.target.value;var b=document.getElementById('lockbtn');if(b)b.disabled=!st.draft.trim()}
+  if(e.target&&e.target.id==='ainp'){st.draft=e.target.value;var b=document.getElementById('lockbtn');if(b)b.disabled=!st.draft.trim();var pv=document.getElementById('apv');if(pv)pv.textContent=apvText()}
 });
 document.addEventListener('keydown',function(e){
   if(e.target&&e.target.id==='ainp'&&e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();lockAns()}
