@@ -210,6 +210,10 @@ body.fit .app{max-width:none;height:100%;display:grid;grid-template-rows:auto mi
 .apv:empty{display:none}
 .atx{padding:0 0 6px 4px;font-size:14px;color:var(--ink2)}
 .atx b{color:var(--ink);font-size:16px}
+
+.hop{transform-box:fill-box;transform-origin:50% 100%;animation:hop .24s ease-out}
+@keyframes hop{0%{transform:translateY(0) scale(1,1)}35%{transform:translateY(-22px) scale(.94,1.08)}70%{transform:translateY(0) scale(1.08,.92)}100%{transform:translateY(0) scale(1,1)}}
+@media (prefers-reduced-motion:reduce){.hop{animation:none}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 
@@ -445,22 +449,24 @@ function boardSVG(){
   Object.keys(LADDER).forEach(function(a){s+=ladderSVG(+a,LADDER[a])});
   Object.keys(SNAKE).forEach(function(a,k){s+=snakeSVG(+a,SNAKE[a],SCOL[SNCOL[a]],k%2?-1:1)});
   s+=lab;
-  st.pos.forEach(function(pn,i){
-    var c=ctr(pn),sl=slot(i),sc=sl.s/60;
-    s+='<g transform="translate('+(c.x+sl.x)+' '+(c.y+sl.y)+') scale('+f1(sc)+') translate(-30 -30)">'+charInner(i)+'</g>';
+  var order=[],mv=-1;st.pos.forEach(function(_,i){if(st.anim&&st.anim.i===i)mv=i;else order.push(i)});if(mv>=0)order.push(mv);
+  order.forEach(function(i){
+    var pn=dpos(i),c=ctr(pn),sl=slot(i),sc=sl.s/60;
+    s+='<g transform="translate('+(c.x+sl.x)+' '+(c.y+sl.y)+') scale('+f1(sc)+') translate(-30 -30)"><g'+(i===mv?' class="hop"':'')+'>'+charInner(i)+'</g></g>';
   });
   return s+'</svg>';
 }
 
 /* ============ state ============ */
-var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,txt:[],raw:[],edit:null,draft:'',hide:false};
+var st={screen:'setup',n:3,names:['','','','','',''],pos:[],rest:[],phase:'idle',food:null,stage:1,ans:[],mark:[],sit:[],used:{},lines:[],reached:[],over:false,cf:null,rolls:[],die:0,rolling:false,hold:null,anim:null,txt:[],raw:[],edit:null,draft:'',hide:false};
 function nm(i){return esc(st.names[i]||CHARS[i].n)}
-function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+st.pos[i]+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
+function dpos(i){return (st.anim&&st.anim.i===i)?st.anim.p:st.pos[i]}
+function pill(i){return '<span class="pl">'+charIcon(i,30)+nm(i)+'<small>'+dpos(i)+'マス目'+(st.rest[i]?'・休み':'')+'</small></span>'}
 function startGame(){
   var n=st.n;st.names=st.names.slice(0,n).map(function(v,i){return (v||'').trim()||CHARS[i].n});
   while(st.names.length<6)st.names.push('');
   st.pos=[];st.rest=[];for(var i=0;i<n;i++){st.pos.push(1);st.rest.push(false)}
-  st.phase='idle';st.food=null;st.used={};st.reached=[];st.over=false;st.cf=null;st.screen='game';render();
+  st.phase='idle';st.food=null;st.used={};st.reached=[];st.over=false;st.cf=null;st.anim=null;st.rolling=false;st.hold=null;st.screen='game';render();
 }
 function players(){return st.pos.length}
 
@@ -557,8 +563,22 @@ function doRoll(){
   if(btn)btn.disabled=true;if(el)el.classList.add('shake');
   var tm=setInterval(function(){
     n++;if(el)el.innerHTML=dieSVG(1+Math.floor(Math.random()*6));
-    if(n>=9){clearInterval(tm);var v=1+Math.floor(Math.random()*6);st.rolling=false;st.die=v;st.rolls[i]--;var fr=st.lines.length;
-      rollMove(i,v,st.lines);st.hold={i:i,v:v,from:fr};if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.rolls[i]===0)restCheck(i,st.lines);if(st.reached.length)st.over=true;render()}
+    if(n>=9){
+      clearInterval(tm);var v=1+Math.floor(Math.random()*6);
+      st.die=v;st.rolls[i]--;
+      var fr=st.lines.length,from=st.pos[i],mid=Math.min(GOAL,from+v);
+      rollMove(i,v,st.lines);var fin=st.pos[i];
+      if(fin>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;
+      st.hold={i:i,v:v,from:fr};
+      var path=[],p;for(p=from+1;p<=mid;p++)path.push([p,240]);
+      if(fin!==mid){var d=fin>mid?1:-1;for(p=mid+d;p!==fin+d;p+=d)path.push([p,80])}
+      st.anim={i:i,p:from};var k=0;
+      (function step(){
+        if(st.screen!=='game'||!st.anim)return;
+        if(k<path.length){st.anim.p=path[k][0];var dl=path[k][1];k++;render();setTimeout(step,dl)}
+        else{st.anim=null;st.rolling=false;if(st.rolls[i]===0)restCheck(i,st.lines);render()}
+      })();
+    }
   },80);
 }
 function nextQ(){
@@ -651,9 +671,9 @@ function resultView(){
   var roller='';
   if(who>=0){
     roller='<div class="roll"><div class="rl">'+charIcon(who,34)+'<b>'+nm(who)+'</b>さんのサイコロ'+tag+'</div><div class="dwrap"><div id="die" class="die">'+dieSVG(h?h.v:st.die)+'</div>'+
-      (h?'<button id="ackbtn" class="btn main big" data-act="ack">OK！ つぎへ</button>':'<button id="rollbtn" class="btn main big" data-act="roll">サイコロをふる！</button>')+'</div></div>';
+      (h?(st.anim?'<button class="btn big" disabled>すすんでるよ…</button>':'<button id="ackbtn" class="btn main big" data-act="ack">OK！ つぎへ</button>'):'<button id="rollbtn" class="btn main big" data-act="roll">サイコロをふる！</button>')+'</div></div>';
   }
-  var shown=h?st.lines.slice(h.from):st.lines.slice(-4);
+  var shown=st.anim?[]:(h?st.lines.slice(h.from):st.lines.slice(-4));
   var lines=shown.length?'<ul class="lines">'+shown.map(function(l){return '<li>'+l+'</li>'}).join('')+'</ul>':'';
   return '<div class="panel"><h2>'+(who>=0?'正解した人は サイコロ！':'けっか')+'</h2>'+revealCard()+roller+lines+
     '<div class="row"><button class="btn main" data-act="next"'+(who>=0?' disabled':'')+'>'+(st.over?'けっかを見る':'つぎの問題へ')+'</button></div></div>';
