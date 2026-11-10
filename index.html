@@ -470,7 +470,9 @@ function settle(i,lines){
   if(p>=GOAL){st.pos[i]=GOAL;if(st.reached.indexOf(i)<0)st.reached.push(i);lines.push(nm(i)+'：ゴール！');return}
   if(LADDER[p]){st.pos[i]=LADDER[p];lines.push(nm(i)+'：はしご！ '+p+'マス目 → '+LADDER[p]+'マス目へワープ')}
   else if(SNAKE[p]){st.pos[i]=SNAKE[p];lines.push(nm(i)+'：ヘビの口！ '+p+'マス目 → '+SNAKE[p]+'マス目へもどる')}
-  else if(SKIP[p]){st.rest[i]=true;lines.push(nm(i)+'：休みのマス。つぎの問題は お休み')}
+}
+function restCheck(i,lines){
+  if(st.pos[i]<GOAL&&SKIP[st.pos[i]]){st.rest[i]=true;lines.push(nm(i)+'：休みのマスで とまったよ。つぎの問題は お休み')}
 }
 function rollMove(i,k,lines){
   var from=st.pos[i],to=Math.min(GOAL,from+k);st.pos[i]=to;
@@ -556,7 +558,7 @@ function doRoll(){
   var tm=setInterval(function(){
     n++;if(el)el.innerHTML=dieSVG(1+Math.floor(Math.random()*6));
     if(n>=9){clearInterval(tm);var v=1+Math.floor(Math.random()*6);st.rolling=false;st.die=v;st.rolls[i]--;var fr=st.lines.length;
-      rollMove(i,v,st.lines);st.hold={i:i,v:v,from:fr};if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;render()}
+      rollMove(i,v,st.lines);st.hold={i:i,v:v,from:fr};if(st.pos[i]>=GOAL)st.rolls[i]=0;if(st.rolls[i]===0)restCheck(i,st.lines);if(st.reached.length)st.over=true;render()}
   },80);
 }
 function nextQ(){
