@@ -452,7 +452,7 @@ function boardSVG(){
   var order=[],mv=-1;st.pos.forEach(function(_,i){if(st.anim&&st.anim.i===i)mv=i;else order.push(i)});if(mv>=0)order.push(mv);
   order.forEach(function(i){
     var pn=dpos(i),c=ctr(pn),sl=slot(i),sc=sl.s/60;
-    s+='<g transform="translate('+(c.x+sl.x)+' '+(c.y+sl.y)+') scale('+f1(sc)+') translate(-30 -30)"><g'+(i===mv?' class="hop"':'')+'>'+charInner(i)+'</g></g>';
+    s+='<g'+(i===mv?' id="mvtok"':'')+' transform="translate('+(c.x+sl.x)+' '+(c.y+sl.y)+') scale('+f1(sc)+') translate(-30 -30)"><g'+(i===mv&&!st.anim.free?' class="hop"':'')+'>'+charInner(i)+'</g></g>';
   });
   return s+'</svg>';
 }
@@ -557,6 +557,24 @@ function decide(){
   if(!any)st.lines.push('だれも正解しなかったよ。答えを おぼえよう！');
   st.phase='result';render();
 }
+function warp(i,mid,fin,done){
+  var A=ctr(mid),B=ctr(fin),pf,dx=B.x-A.x,dy=B.y-A.y,L=Math.sqrt(dx*dx+dy*dy);
+  if(LADDER[mid]){pf=function(t){return {x:A.x+dx*t,y:A.y+dy*t}}}
+  else{
+    var sign=Object.keys(SNAKE).indexOf(String(mid))%2?-1:1,ux=dx/L,uy=dy/L,nx=-uy,ny=ux,off=Math.min(60,Math.max(28,L*.22))*sign;
+    var P1={x:A.x+ux*L*.3+nx*off,y:A.y+uy*L*.3+ny*off},P2={x:A.x+ux*L*.7-nx*off,y:A.y+uy*L*.7-ny*off};
+    pf=function(t){var u=1-t;return {x:u*u*u*A.x+3*u*u*t*P1.x+3*u*t*t*P2.x+t*t*t*B.x,y:u*u*u*A.y+3*u*u*t*P1.y+3*u*t*t*P2.y+t*t*t*B.y}};
+  }
+  var dur=Math.max(900,Math.min(2400,600+L*1.7)),sl=slot(i),sc=sl.s/60,t0=null;
+  function frame(now){
+    if(st.screen!=='game'||!st.anim)return;
+    if(t0===null)t0=now;
+    var t=Math.min(1,(now-t0)/dur),e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2,q=pf(e),el=document.getElementById('mvtok');
+    if(el)el.setAttribute('transform','translate('+f1(q.x+sl.x)+' '+f1(q.y+sl.y)+') scale('+f1(sc*1.12)+') translate(-30 -30)');
+    if(t<1)requestAnimationFrame(frame);else done();
+  }
+  requestAnimationFrame(frame);
+}
 function doRoll(){
   var i=curRoller();if(i<0||st.rolling)return;
   st.rolling=true;var el=document.getElementById('die'),btn=document.getElementById('rollbtn'),n=0;
@@ -570,13 +588,14 @@ function doRoll(){
       rollMove(i,v,st.lines);var fin=st.pos[i];
       if(fin>=GOAL)st.rolls[i]=0;if(st.reached.length)st.over=true;
       st.hold={i:i,v:v,from:fr};
-      var path=[],p;for(p=from+1;p<=mid;p++)path.push([p,240]);
-      if(fin!==mid){var d=fin>mid?1:-1;for(p=mid+d;p!==fin+d;p+=d)path.push([p,80])}
-      st.anim={i:i,p:from};var k=0;
+      var path=[],p;for(p=from+1;p<=mid;p++)path.push(p);
+      st.anim={i:i,p:from,free:false};var k=0;
+      function finish(){st.anim=null;st.rolling=false;if(st.rolls[i]===0)restCheck(i,st.lines);render()}
       (function step(){
         if(st.screen!=='game'||!st.anim)return;
-        if(k<path.length){st.anim.p=path[k][0];var dl=path[k][1];k++;render();setTimeout(step,dl)}
-        else{st.anim=null;st.rolling=false;if(st.rolls[i]===0)restCheck(i,st.lines);render()}
+        if(k<path.length){st.anim.p=path[k];k++;render();setTimeout(step,240)}
+        else if(fin!==mid){setTimeout(function(){if(st.screen!=='game'||!st.anim)return;st.anim.free=true;st.anim.p=mid;render();warp(i,mid,fin,finish)},180)}
+        else finish();
       })();
     }
   },80);
